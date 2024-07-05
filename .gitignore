@@ -1,7 +1,6 @@
 venv
 .env
 *.pth
-*.txt
 *.ipynb
 __pycache__/
 *.pyc
