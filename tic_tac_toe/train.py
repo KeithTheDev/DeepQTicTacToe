@@ -95,6 +95,8 @@ def reinitialize_weights(model):
     for layer in model.children():
         if hasattr(layer, 'reset_parameters'):
             layer.reset_parameters()
+            
+            
 def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, gamma=0.99, epsilon_start=0.1, epsilon_end=0.00001, epsilon_decay=500, target_update=50, save_interval=1000, architecture='default', update_checkpoints=True, alpha=0.6, beta_start=0.4, lambda_=0.8, trial=None):
     optimizer = optim.Adam(policy_net.parameters(), lr=0.00002)
     memory = PrioritizedReplayBuffer(10000, alpha)
