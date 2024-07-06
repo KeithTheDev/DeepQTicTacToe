@@ -157,7 +157,7 @@ def objective(trial):
     reinitialize_weights(target_net)
     
     
-    num_episodes = trial.suggest_int('num_episodes', 20000, 100000)
+    num_episodes = trial.suggest_int('num_episodes', 5000, 30000)
     batch_size = trial.suggest_int('batch_size', 32, 256, step=32)
     gamma = trial.suggest_float('gamma', 0.9, 0.99)
     epsilon_start = trial.suggest_float('epsilon_start', 0.8, 1.0)
@@ -184,9 +184,11 @@ def objective(trial):
     
     return avg_loss
 
-def run_experiments(num_experiments=100, num_episodes=100000):
+
+def run_experiments(num_experiments=100, num_episodes=30000):
     pruner = optuna.pruners.MedianPruner()
-    study = optuna.create_study(direction='minimize', pruner=pruner)
+    storage = optuna.storages.RDBStorage(url='sqlite:///db.sqlite3')
+    study = optuna.create_study(direction='minimize', pruner=pruner, storage=storage)
     study.optimize(objective, n_trials=num_experiments, n_jobs=7)
 
     best_trial = study.best_trial

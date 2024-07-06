@@ -9,6 +9,7 @@ This project implements a Deep Q-Learning model with self-play for the game Tic-
 - matplotlib
 - optuna
 - pygame
+- optuna-dashboard
   
 ## How to run
 

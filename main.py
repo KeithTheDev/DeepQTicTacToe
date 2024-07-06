@@ -47,7 +47,7 @@ if __name__ == "__main__":
             architecture=architecture
         )
     elif args.mode == 'experiment':
-        run_experiments(num_experiments=10, num_episodes=5000)
+        run_experiments(num_experiments=100, num_episodes=20000)
     elif args.mode == 'play':
         load_checkpoint(policy_net, target_net, architecture=architecture)
         run_pygame(policy_net, target_net)
