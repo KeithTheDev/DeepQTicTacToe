@@ -101,6 +101,50 @@ Hyperparameters significantly influence the performance of machine learning mode
 
 Optuna is used for hyperparameter optimization to find the best hyperparameters for training the DQN model. The run_experiments function conducts multiple trials, each with different hyperparameter settings, to minimize the loss function. The optuna-dashboard helps monitor and analyze these experiments.
 
+## Neural Network Architectures Summary
+
+### Default Architecture
+- **Layers**: 6 fully connected layers, each with 128 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Small Architecture
+- **Layers**: 6 fully connected layers, each with 64 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Large Architecture
+- **Layers**: 6 fully connected layers, each with 256 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Extra Small Architecture
+- **Layers**: 6 fully connected layers, each with 32 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Medium Architecture
+- **Layers**: 8 fully connected layers, each with 128 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Extra Large Architecture
+- **Layers**: 6 fully connected layers, each with 512 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
+### Deep Architecture
+- **Layers**: 10 fully connected layers, each with 128 neurons.
+- **Streams**: 
+  - Value Stream: 1 output neuron.
+  - Advantage Stream: 9 output neurons.
+
 ## Conclusion
 
 This project provides a comprehensive implementation of a DQN agent for Tic-Tac-Toe, with robust training, evaluation, and experimentation capabilities. By exploring different architectures and tuning hyperparameters, it aims to develop an optimal agent for the game.
