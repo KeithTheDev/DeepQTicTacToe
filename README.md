@@ -7,7 +7,9 @@ This project implements a Deep Q-Learning model with self-play for the game Tic-
 - numpy
 - torch
 - matplotlib
-
+- optuna
+- pygame
+  
 ## How to run
 
 1. Install the dependencies:

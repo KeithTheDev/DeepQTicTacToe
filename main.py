@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     if args.mode == 'train':
         best_hyperparameters = {
-            'num_episodes': 100000,
+            'num_episodes': 10000000,
             #'num_episodes': 4923,
             'batch_size': 109,
             'gamma': 0.9007905885073516,

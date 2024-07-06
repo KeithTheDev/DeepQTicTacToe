@@ -28,7 +28,7 @@ def choose_action(state, policy_net, epsilon, env):
             max_q_action = available_actions[available_q_values.index(max_q_value)]
             return max_q_action
 
-def optimize_model(memory, policy_net, target_net, optimizer, batch_size, gamma, beta):
+def optimize_model(memory, policy_net, target_net, optimizer, batch_size, gamma, beta, lambda_):
     if len(memory) < batch_size:
         return 0
     states, actions, rewards, next_states, dones, indices, weights = memory.sample(batch_size, beta)
@@ -41,9 +41,12 @@ def optimize_model(memory, policy_net, target_net, optimizer, batch_size, gamma,
     weights = torch.tensor(weights, dtype=torch.float32)
 
     state_action_values = policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
-    next_state_actions = policy_net(next_states).max(1)[1].unsqueeze(1)
-    next_state_values = target_net(next_states).gather(1, next_state_actions).squeeze(1).detach()
-    expected_state_action_values = rewards + (gamma * next_state_values * (1 - dones))
+    next_state_values = target_net(next_states).max(1)[0].detach()
+    
+    td_target = rewards + (gamma * next_state_values * (1 - dones))
+    td_delta = td_target - state_action_values
+
+    expected_state_action_values = state_action_values + lambda_ * td_delta
 
     loss = (state_action_values - expected_state_action_values).pow(2) * weights
     prios = loss + 1e-5
@@ -92,9 +95,8 @@ def reinitialize_weights(model):
     for layer in model.children():
         if hasattr(layer, 'reset_parameters'):
             layer.reset_parameters()
-
-def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, gamma=0.99, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=500, target_update=50, save_interval=1000, architecture='default', update_checkpoints=True, alpha=0.6, beta_start=0.4):
-    optimizer = optim.Adam(policy_net.parameters())
+def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, gamma=0.99, epsilon_start=0.1, epsilon_end=0.00001, epsilon_decay=500, target_update=50, save_interval=1000, architecture='default', update_checkpoints=True, alpha=0.6, beta_start=0.4, lambda_=0.8, trial=None):
+    optimizer = optim.Adam(policy_net.parameters(), lr=0.00002)
     memory = PrioritizedReplayBuffer(10000, alpha)
 
     start_episode = load_checkpoint(policy_net, target_net, architecture, optimizer) if update_checkpoints else 0
@@ -119,7 +121,7 @@ def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, ga
             state = next_state
             if done:
                 break
-            loss = optimize_model(memory, policy_net, target_net, optimizer, batch_size, gamma, beta)
+            loss = optimize_model(memory, policy_net, target_net, optimizer, batch_size, gamma, beta, lambda_)
             episode_loss += loss
 
         if episode % target_update == 0:
@@ -130,7 +132,12 @@ def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, ga
 
         if episode % 100 == 0:
             avg_loss = episode_loss / (t + 1)
-            print(f"Episode {episode}/{num_episodes}, Loss: {avg_loss:.6f}")
+            print(f"Episode {episode}/{num_episodes}, Loss: {avg_loss:.8f}")
+            
+            if trial is not None:
+                trial.report(avg_loss, episode)
+                if trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
 
         total_loss += episode_loss
 
@@ -140,20 +147,23 @@ def train_dqn(env, policy_net, target_net, num_episodes=5000, batch_size=128, ga
 
 def objective(trial):
     env = TicTacToe()
-    policy_net = DQN(architecture='default')
-    target_net = DQN(architecture='default')
+    architecture = trial.suggest_categorical('architecture', ['default', 'small', 'large', 'extra_small', 'medium', 'extra_large', 'deep'])
+    policy_net = DQN(architecture=architecture)
+    target_net = DQN(architecture=architecture)
     target_net.load_state_dict(policy_net.state_dict())
     reinitialize_weights(policy_net)
     reinitialize_weights(target_net)
     
-    num_episodes = trial.suggest_int('num_episodes', 1000, 5000)
-    batch_size = trial.suggest_int('batch_size', 32, 128)
-    gamma = trial.suggest_uniform('gamma', 0.9, 0.99)
-    epsilon_start = trial.suggest_uniform('epsilon_start', 0.8, 1.0)
-    epsilon_end = trial.suggest_uniform('epsilon_end', 0.01, 0.1)
-    epsilon_decay = trial.suggest_int('epsilon_decay', 100, 1000)
-    target_update = trial.suggest_int('target_update', 10, 50)
+    
+    num_episodes = trial.suggest_int('num_episodes', 20000, 100000)
+    batch_size = trial.suggest_int('batch_size', 32, 256, step=32)
+    gamma = trial.suggest_float('gamma', 0.9, 0.99)
+    epsilon_start = trial.suggest_float('epsilon_start', 0.8, 1.0)
+    epsilon_end = trial.suggest_float('epsilon_end', 0.01, 0.1)
+    epsilon_decay = trial.suggest_int('epsilon_decay', 100, 1000, step=100)
+    target_update = trial.suggest_int('target_update', 10, 50, step=10)
     save_interval = trial.suggest_int('save_interval', 1000, 5000)
+    lambda_ = trial.suggest_float('lambda_', 0.1, 1.0)
 
     avg_loss = train_dqn(
         env, policy_net, target_net,
@@ -165,19 +175,21 @@ def objective(trial):
         epsilon_decay=epsilon_decay,
         target_update=target_update,
         save_interval=save_interval,
-        update_checkpoints=False
+        update_checkpoints=False,
+        lambda_=lambda_,
+        trial=trial
     )
     
     return avg_loss
 
-def run_experiments(num_experiments=10, num_episodes=5000):
-    study = optuna.create_study(direction='minimize')
-    study.optimize(objective, n_trials=num_experiments, n_jobs=4)  # Using 4 parallel jobs
+def run_experiments(num_experiments=100, num_episodes=100000):
+    pruner = optuna.pruners.MedianPruner()
+    study = optuna.create_study(direction='minimize', pruner=pruner)
+    study.optimize(objective, n_trials=num_experiments, n_jobs=7)
 
     best_trial = study.best_trial
-    print(f"Best hyperparameters: {best_trial.params} with avg loss: {best_trial.value:.6f}")
+    print(f"Best hyperparameters: {best_trial.params} with avg loss: {best_trial.value:.8f}")
 
-    # Convert DataFrame to dict with stringified timestamps and timedeltas
     trials_df = study.trials_dataframe().applymap(
         lambda x: str(x) if isinstance(x, (np.datetime64, pd.Timestamp, pd.Timedelta)) else x
     ).to_dict()
