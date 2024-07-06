@@ -55,7 +55,8 @@ optuna-dashboard sqlite:///db.sqlite3
 ```
 Open the provided URL in a web browser to monitor the optimization progress.
 
-Playing the Game
+### Playing the Game
+
 To play the game against the trained DQN agent:
 
 ```sh
